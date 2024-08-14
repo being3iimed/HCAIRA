@@ -1,7 +1,7 @@
 import re
 
 import numpy as np
-from promptflow import tool
+from langchain_core.tools import tool
 
 
 @tool
@@ -17,7 +17,7 @@ def concat_results(groundesness_score: str):
         results of groundedness scores.
     """
 
-    load_list = [{"name": "gpt_groundedness", "score": groundesness_score}]
+    load_list = [{"name": "assistant_groundedness", "score": groundesness_score}]
     score_list = []
     errors = []
     for item in load_list:

@@ -2,7 +2,7 @@ import ast
 import json
 import sys
 
-from promptflow import tool
+from langchain_core.tools import tool
 
 
 @tool

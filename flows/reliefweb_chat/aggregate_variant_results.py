@@ -1,13 +1,6 @@
-"""
-
-adding langsmith here 
-https://docs.smith.langchain.com/old/cookbook/testing-examples/comparing-runs
-
-
 from typing import List
-
 import numpy as np
-from promptflow import log_metric, tool
+from langchain_core.tools import tool
 
 
 @tool
@@ -42,4 +35,3 @@ def aggregate_variants_results(results: List[dict]):
         log_metric(metric_name, aggregate_results[name])
 
     return aggregate_results
-"""
