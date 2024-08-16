@@ -1,3 +1,9 @@
+import os
+from langchain.prompts import PromptTemplate
+
+# Genrating queries in ReliefWeb Template
+groundedness_check = f'''
+
 System:
 You are an AI assistant. You will be given the definition of an evaluation metric for assessing the quality of an answer in a question-answering task. Your job is to compute an accurate evaluation score using the provided evaluation metric.
 User:
@@ -32,4 +38,7 @@ Reminder: The return values for each task should be correctly formatted as an in
 ## Actual Task Input:
 {"CONTEXT": {{context}}, "ANSWER": {{answer}}}
 
-Actual Task Output:
+Actual Task Output:'''
+groundedness_check_prompt = PromptTemplate.from_template(groundedness_check)
+
+# print(create_reliefWeb_query_prompt.format(context='Disaster', answer='hum'))
