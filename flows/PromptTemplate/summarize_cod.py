@@ -1,3 +1,8 @@
+import os
+from langchain.prompts import PromptTemplate
+
+# Genrating queries in ReliefWeb Template
+summarize_cod = f'''
 system:
 
 Article:
@@ -54,3 +59,9 @@ Article:
 
   > The JSON in `summaries_per_step` should be a list (length 5) of
   dictionaries whose keys are "missing_entities" and "denser_summary".
+'''
+summarize_cod_prompt = PromptTemplate.from_template(summarize_cod)
+
+# print(summarize_cod_prompt.format(text='nothing'))
+
+  

@@ -3,7 +3,6 @@ from langchain.prompts import PromptTemplate
 
 # Genrating queries in ReliefWeb Template
 summarize_basic = f'''
-
 system:
 
 You are a humanitarian researcher who needs produces accurate and consise summaries of latest news
