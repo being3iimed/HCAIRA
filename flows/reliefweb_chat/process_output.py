@@ -1,10 +1,6 @@
 import json
-
 import jsonlines
-from langchain_core.tools import tool
 
-
-@tool
 def process_output(
     user_question: str,
     query_entities: str,
@@ -14,8 +10,6 @@ def process_output(
     refs: str,
     llm_question_result: str,
     content_safety_result: str,
-    deep_eval_score: float,
-    deep_eval_score_reason: str,
 ) -> dict:
     """
     Process the output of the ReliefWeb chat flow.
@@ -29,8 +23,6 @@ def process_output(
         refs (str): The references.
         llm_question_result (str): The LLM question result.
         content_safety_result (str): The content safety result.
-        deep_eval_score (float): The deep evaluation score.
-        deep_eval_score_reason (str): The reason for the deep evaluation score.
 
     Returns:
         dict: The processed output.
@@ -61,12 +53,6 @@ def process_output(
         refs = json.loads(refs)
         rweb_results = json.loads(rweb_results)
 
-        # If deep eval returned anything less than a perfect score, alert the user to the potential
-        # concerns with the output
-        if deep_eval_score < 1.0:
-            llm_question_result += f"\n\nWarning! Fact checker evaluation returned a score of {deep_eval_score}/1.0"
-            llm_question_result += f"Reason:\n\n{deep_eval_score_reason}"
-
         full_output = {
             "user_question": user_question,
             "query_entities": query_entities,
@@ -93,8 +79,6 @@ def process_output(
         )
 
     full_output["content_safety_result"] = content_safety_result
-    full_output["deep_eval_score"] = deep_eval_score
-    full_output["deep_eval_score_reason"] = deep_eval_score_reason
 
     with open("output.json", "w") as f:
         json.dump(full_output, f, indent=4)
