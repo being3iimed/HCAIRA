@@ -1,3 +1,8 @@
+import os
+from langchain.prompts import PromptTemplate
+
+# Genrating queries in ReliefWeb Template
+extract_query_from_question = f'''
 system:
 You are an AI assistant reading the transcript of a conversation between an AI and a human. Given an input question and conversation history, infer user real intent.
 
@@ -33,4 +38,7 @@ AI: {{item.outputs.answer}}
 {% endfor %}
 Human: {{question}}
 
-Output:
+Output:'''
+extract_query_from_question_prompt = PromptTemplate.from_template(extract_query_from_question)
+
+# print(extract_query_from_question_prompt.format(question='nothing'))
