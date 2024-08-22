@@ -15,4 +15,4 @@ user:
 
 answer_question_prompt = PromptTemplate.from_template(answer_question)
 
-print(answer_question_prompt.format(question='nothing', reliefweb_data='fun'))
+#print(answer_question_prompt.format(question='nothing', reliefweb_data='fun'))
