@@ -5,6 +5,7 @@ from langchain.chains import LLMChain
 from langchain_core.tools import Tool
 from langchain_mistralai import ChatMistralAI
 from langchain.prompts import ChatPromptTemplate
+import warnings
 
 # Initialize the model and set up the environment
 def initialize_model(api_key):
@@ -21,99 +22,90 @@ def initialize_model(api_key):
 
     return llm_with_tools
 
-# Function to check if the query is disaster-related
-def is_disaster_related(query):
-    disaster_keywords = ["disaster", "earthquake", "flood", "hurricane", "tsunami", "wildfire", "storm", "landslide", "cold wave"]
-    return any(keyword in query.lower() for keyword in disaster_keywords)
+# Function to check if a new query can be answered using previous responses
+def can_answer_from_previous(query, previous_responses):
+    # Check if the query is about the same topic as previous responses
+    keywords_in_previous = [resp['query_keywords'] for resp in previous_responses]
+    current_keywords = extract_keywords(query)  # Implement a keyword extraction method
 
-# Function to infer the real intent of the user query
-def infer_user_intent(query, chat_history):
-    extract_query_prompt = f"""
-    system:
-    You are an AI assistant reading the transcript of a conversation between an AI and a human. Given an input question and conversation history, infer user real intent.
+    for keywords in keywords_in_previous:
+        if set(current_keywords).intersection(set(keywords)):
+            # Return True if the current query's keywords overlap with any previous response keywords
+            return True, [resp['assistant'] for resp in previous_responses if set(keywords).intersection(set(current_keywords))][0]
+    return False, None
 
-    The conversation history is provided just in case of a context (e.g. "What is this?" where "this" is defined in previous conversation).
+def extract_keywords(text):
+    # Simple keyword extraction (can be replaced with a more sophisticated method)
+    return text.lower().split()
 
-    Return the output as a query that could be used in a search engine
+# Function to handle user queries and fetch data from ReliefWeb tool if necessary
+def handle_query(query, llm_with_tools, previous_responses):
+    # Check if the query can be answered from previous responses
+    can_answer, previous_answer = can_answer_from_previous(query, previous_responses)
+    
+    if can_answer:
+        return previous_answer
 
-    user:
-    Conversation history:
-    {chat_history}
-
-    Output: {query}
-    """
-    # Assume that there is a function to call the LLM model
-    refined_query = llm_with_tools.invoke(input=extract_query_prompt).content
-    return refined_query
-
-# Function to fetch data using the tool
-def fetch_disaster_data(query):
+    # If no answer is found in previous responses, fetch new data using the ReliefWeb tool
     data = api.get_data(query)
-    return api.convent_string_to_dictionary(data)
+    schema = api.convent_string_to_dictionary(data)
 
-# First prompt function
-def initial_prompt(query, llm_with_tools, chat_history):
-    # Infer user intent from query
-    refined_query = infer_user_intent(query, chat_history)
+    # Define the prompt template
+    prompt_template = ChatPromptTemplate.from_messages(
+        [
+            ("system",
+             "You are a helpful assistant. Using the output from a query to ReliefWeb, answer the user's question. "
+             "You always provide your sources when answering a question. {relief_web_data}."),
+            ("user", "{query}"),
+        ]
+    )
 
-    # Check if the refined query is disaster-related
-    if is_disaster_related(refined_query):
-        # Fetch data using the tool
-        schema = fetch_disaster_data(refined_query)
+    # Format the prompt with the fetched data
+    formatted_prompt = prompt_template.format_prompt(query=query, relief_web_data=schema)
 
-        # Define the prompt template
-        prompt_template = ChatPromptTemplate.from_messages(
-            [
-                ("system",
-                 "You are a helpful assistant. Using the output from a query to ReliefWeb, answer the user's question. "
-                 "You always provide your sources when answering a question. {relief_web_data}."),
-                ("user", "{query}"),
-            ]
-        )
+    # Invoke the model with the formatted prompt
+    response = llm_with_tools.invoke(input=formatted_prompt)
 
-        # Format the first query prompt
-        formatted_prompt = prompt_template.format_prompt(query=refined_query, relief_web_data=schema)
+    # Append fetched data to chat history
+    previous_responses.append({"user": query, "assistant": response.content, "query_keywords": extract_keywords(query), "fetched_data": schema})
 
-        # Invoke the model for the first query
-        response = llm_with_tools.invoke(input=formatted_prompt)
-
-        return response.content
-    else:
-        return "The information provided is not related to disasters. Please ask a question specifically about disasters or humanitarian crises."
-
-# Second prompt function (for follow-up queries using previous context)
-def chain_prompt(previous_output, query, llm_with_tools, chat_history):
-    # Infer user intent from query
-    refined_query = infer_user_intent(query, chat_history)
-
-    # Check if the refined query is disaster-related
-    if is_disaster_related(refined_query):
-        # Fetch data using the tool
-        schema = fetch_disaster_data(refined_query)
-
-        # Define the prompt template for the second query
-        chain_prompt_template = ChatPromptTemplate.from_messages(
-            [
-                ("system",
-                 "You are a helpful assistant. Using the previous output and any other relevant data, answer the user's "
-                 "new question."),
-                ("user", "{previous_output}\nUser's question: {query}")
-            ]
-        )
-
-        # Format the second query prompt
-        formatted_chain_prompt = chain_prompt_template.format_prompt(previous_output=previous_output, query=refined_query)
-
-        # Invoke the model for the second query
-        chain_response = llm_with_tools.invoke(input=formatted_chain_prompt)
-        return chain_response.content
-    else:
-        return "The information provided is not related to disasters. Please ask a question specifically about disasters or humanitarian crises."
+    return response.content
 
 # Streamlit app setup
-st.title("AI Assistant")
+warnings.filterwarnings("ignore")
 
-# Sidebar for API Key input
+# Gradient text styling
+gradient_text_html = """
+<style>
+.gradient-text {
+    font-weight: bold;
+    background: -webkit-linear-gradient(left, red, orange);
+    background: linear-gradient(to right, red, orange);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline;
+    font-size: 3em;
+}
+</style>
+<div class="gradient-text">Humanitarian Crises AI Report Assistant</div>
+"""
+
+st.markdown(gradient_text_html, unsafe_allow_html=True)
+st.caption("Talk your way through data")
+
+# Chatbot description
+st.write("**What does this chatbot do?**")
+st.write("This chatbot helps you find and understand information about humanitarian crises. "
+         "It queries the ReliefWeb API to fetch up-to-date data on various crises and provides insightful responses. "
+         "Feel free to ask questions about different humanitarian emergencies, and the assistant will provide you with relevant data and context.")
+
+if "toast_shown" not in st.session_state:
+    st.session_state["toast_shown"] = False
+
+if not st.session_state["toast_shown"]:
+    st.toast("The snowflake data retrieval is disabled for now.", icon="👋")
+    st.session_state["toast_shown"] = True
+
 st.sidebar.header("API Configuration")
 api_key = st.sidebar.text_input("Enter your Mistral API Key", type="password")
 
@@ -124,34 +116,34 @@ if st.sidebar.button("Submit API Key"):
     else:
         st.sidebar.error("Please enter your Mistral API Key.")
 
-# Main chat interface
+# Sidebar for reset and DDL
+if st.sidebar.button("Reset Chat"):
+    for key in st.session_state.keys():
+        del st.session_state[key]
+    st.session_state["chat_history"] = []
+
+# Check if API key is provided
 if "api_key" in st.session_state:
-    # Chat history
     st.header("Chat History")
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
 
+    # Display chat history with user and assistant messages formatted
     for chat in st.session_state["chat_history"]:
-        st.write(f"**User:** {chat['user']}")
-        st.write(f"**Assistant:** {chat['assistant']}")
+        st.markdown(f"<div style='text-align: right; color: blue;'><strong>User:</strong> {chat['user']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: left; color: green;'><strong>Assistant:</strong> {chat['assistant']}</div>", unsafe_allow_html=True)
         st.write("---")
 
-    # Input for the user's question
-    query = st.text_input("Type your question here and press Enter to submit", key="query_input")
+    # Place the user input box at the bottom of the page
+    query = st.text_input("Type your question here and press Enter to submit", key="query_input", label_visibility="hidden")
 
-    # Handle the query submission
-    if st.button("Submit Query"):
+    if st.button("Submit Question", use_container_width=True):
         if query:
             llm_with_tools = initialize_model(st.session_state["api_key"])
-            if not st.session_state["chat_history"]:
-                response = initial_prompt(query, llm_with_tools, st.session_state["chat_history"])
-            else:
-                last_response = st.session_state["chat_history"][-1]["assistant"]
-                response = chain_prompt(last_response, query, llm_with_tools, st.session_state["chat_history"])
+            response = handle_query(query, llm_with_tools, st.session_state["chat_history"])
             
             st.session_state["chat_history"].append({"user": query, "assistant": response})
-            st.write(f"**Assistant:** {response}")
+            st.write(f"<div style='text-align: left; color: green;'><strong>Assistant:</strong> {response}</div>", unsafe_allow_html=True)
 
-# If no API key has been submitted
 else:
     st.warning("Please submit your API Key in the sidebar to start interacting with the assistant.")
