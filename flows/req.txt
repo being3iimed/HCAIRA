@@ -4,3 +4,4 @@ langchain-core
 langchain
 langchain-mistralai
 streamlit
+beautifulsoup4
