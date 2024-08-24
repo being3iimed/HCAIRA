@@ -1,0 +1,6 @@
+bs4
+langchain-community
+langchain-core
+langchain
+langchain-mistralai
+streamlit
