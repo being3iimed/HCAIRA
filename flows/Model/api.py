@@ -203,12 +203,18 @@ def get_data(query=None) -> str:
 
 def convent_string_to_dictionary(data: str) -> dict:
     """
-        Remove first and last character and convert to JSON.
+    Convert a JSON string to a dictionary.
 
-        Args:
-            data (str): The string to be converted to JSON.
+    Args:
+        data (str): The string to be converted to JSON.
 
-        Returns:
-            Converted data to dictionary
-        """
-    return json.loads(data[1:-1])
+    Returns:
+        dict: Converted data to dictionary.
+    """
+    try:
+        # Try parsing the data directly as JSON
+        return json.loads(data)
+    except json.JSONDecodeError as e:
+        print("JSON decode error:", e)
+        print("Data that caused the error:", data)  # Debugging output
+        return {}  # Or handle the error in another appropriate way
